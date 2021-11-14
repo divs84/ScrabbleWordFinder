@@ -1,19 +1,22 @@
+from englishletterscores import EnglishLetterScores
+from letterscores import LetterScores
 import sys
 from typing import List
+from word import Word
 
 class ScrabbleWordFinder:
     
-    def __init__(self, rack: str):
-        self.scores = {"A": 1, "C": 3, "B": 3, "E": 1,  "D": 2, "G": 2,
-                       "F": 4, "I": 1, "H": 4, "K": 5,  "J": 8, "M": 3,
-                       "L": 1, "O": 1, "N": 1, "Q": 10, "P": 3, "S": 1,
-                       "R": 1, "U": 1, "T": 1, "W": 4,  "V": 4, "Y": 4,
-                       "X": 8, "Z": 10}  
-        self.word_list = {}
+    letter_set: LetterScores
+    word_list: List[Word]
+    rack: str
+
+    def __init__(self, letter_set: LetterScores, rack: str) -> None:
+        self.letter_set = letter_set
+        self.word_list = []
         self.rack = rack.upper()
 
 
-    def load_word_list(self, filename: str) -> List:
+    def load_word_list(self, filename: str) -> None:
         """
         Load a tab-separated word list from a given filename.
 
@@ -23,10 +26,12 @@ class ScrabbleWordFinder:
         f = open(filename, 'r')
         for line in f.readlines():
             word, definition = line.strip().split('\t')
-            self.word_list[word] = definition
+            self.word_list.append(Word(word, definition, self.letter_set))
+
+        return
 
 
-    def can_make_word(self, word: str) -> bool:
+    def can_make_word(self, word: Word) -> bool:
         """
         Check to see if a given word can be made with the
         letters on the rack.
@@ -36,17 +41,18 @@ class ScrabbleWordFinder:
                 with the rack letters.
         """
         rack_letters = list(self.rack)
-        for letter in word:
+        for idx, letter in enumerate(word.letters):
             if letter in rack_letters:
                 rack_letters.remove(letter)
             elif '*' in rack_letters:
                 rack_letters.remove('*')
+                word.set_wildcard(idx)
             else:
                 return False
         return True
 
 
-    def find_words(self):
+    def find_words(self) -> List:
         """
         Find all valid words that can be spelt with the
         rack letters.  Return a list containing each valid word,
@@ -54,23 +60,18 @@ class ScrabbleWordFinder:
         """
         valid_words = []
         for word in self.word_list:
-            if self.can_make_word(word):
-                total_score = 0
-                for letter in word:
-                    total_score += self.scores[letter]
-                valid_words.append([total_score, word, self.word_list[word]])
-
+            if self.can_make_word(word):    
+                valid_words.append(word)
         return valid_words
 
 
 def main(rack_letters):
     
-    swf = ScrabbleWordFinder(rack_letters)
-    swf.load_word_list("word_list.txt")
+    swf = ScrabbleWordFinder(EnglishLetterScores(), rack_letters)
+    swf.load_word_list("english_word_list.txt")
     valid_words = swf.find_words()
-
-    print(f"{'Score':^5} {'Word':^10} {'Definition':<50}")
-    [print(f"{valid[0]:^5} {valid[1]:<10} {valid[2]:<50}") for valid in valid_words]
+    
+    [print(word) for word in valid_words]
     
 
 if __name__ == "__main__":
